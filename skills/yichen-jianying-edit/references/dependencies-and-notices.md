@@ -1,0 +1,17 @@
+# 运行依赖与来源
+
+- 核心项目：<https://github.com/mcncarl/jianying-headless>。当前为私有源码预览；
+  Skill 总目录或安装器不能代替私有仓库访问授权。
+- 剪映专业版是用户单独安装的闭源运行依赖。官方库、字体、效果包、缓存媒体和
+  账号权益不随本 Skill 分发。内部接口调用不代表官方 SDK 或集成许可。
+- 当前核心桥接头文件参考了 MIT 许可的
+  <https://github.com/wenshui330/jy-draftc>；历史适配器曾使用 Apache-2.0 的
+  <https://github.com/GuanYixuan/pyJianYingDraft>。完整声明和许可证保留在核心项目，
+  不把这条历史关系描述为完全独立原创。
+- FFmpeg、Python 和 Xcode 是外部工具，各自条款仍适用。
+- 可选 ASR 需要单独安装的执行器/Skill、服务访问权限和本次调用授权；本 Skill
+  不包含令牌，也不从聊天、剪贴板或浏览器自动寻找凭据。
+
+代码许可证只覆盖明示有权许可的部分，不授予剪映程序库、账号或媒体素材的权利。
+单独收录本 Skill，不改变总仓库其他目录的许可证。当前 Skill 自身许可如有单独
+`LICENSE` 文件，以其明确范围及第三方声明为准。
