@@ -5,6 +5,10 @@
 
 **主要适配版本：11.5.0 · 兼容版本：11.4.2**
 
+**首次使用请从 [从零生成第一个剪映草稿](docs/GETTING-STARTED.md) 开始。**
+教程包含安装前提、环境检查、拖入自己的视频、首页登记、保存重开和常见报错处理。
+11.5.0 仍需匹配具体安装身份与工具链，尚不保证任意电脑安装即用。
+
 项目适用于 AI 视频工作流的工程交接、批量草稿生成和 Agent 辅助剪辑。
 提供 Python 命令行入口及配套 Agent Skill。它不是剪映官方 SDK，运行时需要安装匹配版本的剪映。
 
@@ -66,7 +70,7 @@
 ## 快速开始
 
 ```bash
-gh repo clone mcncarl/jianying-headless
+git clone https://github.com/mcncarl/jianying-headless.git
 cd jianying-headless
 python3 tools/build_native_codec.py
 python3 skills/yichen-jianying-edit/scripts/headless_draft.py doctor
