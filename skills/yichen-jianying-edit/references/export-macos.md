@@ -4,7 +4,9 @@
 
 ## 输入、边界与命令
 
-入口使用本机剪映 11.4.2 的原生 `ExportService` 和 MP4 writer，不调用外部 FFmpeg 合成、烧字幕或重新封装。FFmpeg 只用于完整解码检查、抽帧与音频质检。
+入口使用本机剪映 11.5.0（主版本）或 11.4.2（兼容版本）的独立原生 `ExportService` 配置和 MP4 writer，不调用外部 FFmpeg 合成、烧字幕或重新封装。FFmpeg 只用于完整解码检查、抽帧与音频质检。
+构建快照的运行版本必须与当前剪映一致；换版本后先在当前版本重新构建或编辑独立副本，不直接混用旧快照。
+以下历史数据主要来自 11.4.2；11.5.0 分项证据见核心项目 `docs/VERIFICATION.md`。高清黑白和橙色花字在 11.5.0 保留待验，不能把旧版技术结果当成本次权限或验收。
 
 输入必须是 `build` 或 `edit build` 产生且可通过逐文件验证的独立快照，不是正在编辑的 live 草稿。之后在剪映中手工修改的内容不会自动进入旧快照；用户要导出最新手改内容时，不能悄悄改为导出旧 build。
 
@@ -32,7 +34,9 @@ python3 SKILL/scripts/headless_draft.py export --build ABSOLUTE_BUILD --out ABSO
 
 成功状态 `encoded-and-decoded` 只表示收到了原生完成事件、标准 MP4/H.264/AAC 检查通过、完整解码通过、素材和来源 build 没有变化。仍须查看实际输出，检查内容、字幕位置、变速、转场与结尾，并在涉及音量变化时检查音频；不能将解码成功等同于全部画面正确。
 
-结果保存在 `result.json`，另有 `ffprobe.json`、`runtime-timeline.json`、输入 hash 清单、原生日志和完整解码日志。返回实际帧数、`expected_frames`、`frame_delta` 与 `duration_delta_seconds`：目前允许原生量化误差最多一帧，容器时长容差为一帧或 50 ms 中较大者；这些差异会显示，不能把存在差异的文件宣称为帧精确输出。
+结果保存在 `result.json`，另有 `ffprobe.json`、`runtime-timeline.json`、输入 hash 清单、原生日志和完整解码日志。返回实际帧数、`expected_frames`、`frame_delta`、`frame_count_policy`、`accepted_frame_range` 与 `duration_delta_seconds`。2026-09-19 起，时长与帧率相乘为整数（含微秒精度误差）时必须帧数完全一致；真正的非整帧时长只接受相邻的两个整数帧数，不再普遍放行少一帧。容器时长容差仍为一帧或 50 ms 中较大者，不能用音轨或容器时长掩盖视频少帧。
+
+11.5.0 的 5 秒/30 fps 图片 GIF 样本曾间歇输出 149 帧，同一 build 和同一 helper 二进制复测以及原生界面导出均为 150 帧。此问题不能归为必然取整，也尚未证明渲染器根因已修复；当前只修复了验收漏检，缺帧文件会失败并保留诊断，不自动重试、补帧或改时长。旧报告中的一帧容差只代表历史规则。
 
 历史本机样本覆盖 25 / 30 fps、关键帧、叠化、静态蒙版和复合冻结快照；曾有实际少一帧的导出，结果如实报告差异。UI 输出还可能是文件名为 `.mp4` 的 QuickTime 容器，不能仅看扩展名判定为本入口的标准 MP4。不同版本、分辨率、帧率或效果组合仍需对应检查。
 

@@ -13,13 +13,11 @@ import sys
 import tempfile
 
 ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT / 'engine'))
+from runtime_profiles import PROFILES, validate_identity
 BRIDGE = ROOT / 'bridge'
 APP = Path('/Applications/VideoFusion-macOS.app')
 EXPECTED_CODEC_SHA = 'b6533eb5eb1eea58dfa74fb1d16d3bb580970fe881f587605d358af1745f971d'
-PROFILES = {
-    '11.4.0': 'a1693070036a6678bb5db35f71d2105812ad24a2370e7e91c78712cc0d6455f3',
-    '11.4.2': '632c8ddd09ff4a54f876cd8142eb505055ee26d944199506b230949b7e106bd1',
-}
 
 
 def require(value, message):
@@ -55,11 +53,8 @@ def main():
     require(manifest['expected_codec_sha256'] == EXPECTED_CODEC_SHA, 'Codec fingerprint changed')
 
     info = plistlib.loads((APP / 'Contents/Info.plist').read_bytes())
-    version = info.get('CFBundleShortVersionString')
-    require(version in PROFILES and info.get('CFBundleVersion') == version
-            and info.get('CFBundleIdentifier') == 'com.lemon.lvpro', 'Unsupported Jianying version or identity')
     library = APP / 'Contents/Frameworks/libvideoeditor.dylib'
-    require(digest(library) == PROFILES[version], 'The installed editor library does not match this profile')
+    version = validate_identity(info, digest(library))
     env = {key: value for key, value in os.environ.items()
            if not key.startswith('DYLD_') and key not in {'PYTHONHOME', 'PYTHONPATH'}}
     env.update(PATH='/usr/bin:/bin:/usr/sbin:/sbin', LC_ALL='C')

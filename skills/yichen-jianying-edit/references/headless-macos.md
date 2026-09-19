@@ -4,7 +4,7 @@
 
 - 入口：本 Skill 的 `scripts/headless_draft.py`。代码位于单独检出的 Jianying Headless 项目 `engine/`；独立安装 Skill 时设置 `JIANYING_HEADLESS_ROOT`，入口核验代码与蓝图 SHA-256。
 - 应用：`/Applications/VideoFusion-macOS.app`；目标根为当前用户 `Movies/JianyingPro/User Data/Projects/com.lveditor.draft`。
-- 精确 runtime profile：11.4.0 / 11.4.2，各自固定 version、build、bundle ID 与 libvideoeditor hash；写 live 前核验完整深度签名及 Team ID。升级到其他版本会拒绝，不改旧组件的常量。
+- 精确 runtime profile：11.5.0 为主版本，11.4.2 为兼容版本；11.4.0 仅保留历史草稿配置。各自固定 version、build、bundle ID 与 libvideoeditor hash；写 live 前核验完整深度签名及 Team ID。未列入的版本会拒绝，不改旧组件的常量。
 - 历史本机验收包含 11.4.0 / 11.4.2 的 6 秒、6 轨草稿：视频切片、混合速度、画中画、字幕、标题、WAV BGM 和 MP3 音效。原生打开、播放、保存、退出和冷重开均有分项记录；私人工作目录及原始证据不随源码分发，见下方验证说明。
 - 草稿 build/publish 入口没有调用网络、ASR、视频导出或在线资源下载。用户明确要求成片时另用 [export-macos.md](export-macos.md)；任意本地音频可以导入，但音频格式仍须在剪映中验收；实测源编码为 H.264/AAC、WAV、MP3。HEVC 在输入白名单，尚未在本次新建链路单独验收。
 - 11.4.2 的 25 fps、12 度旋转画中画、同一主轨混合不同视频、彩色标题及描边均已完成实际显示、播放和冷重开回读。其他帧率和编码仍需按实际项目验收，不能把一个样例视为所有组合均已验证。
@@ -82,7 +82,7 @@ python3 SKILL/scripts/headless_draft.py from-compiled --compiled WORK/compiled/c
 
 视频轨片段可加入 `"mask": {"shape": "circle", "width": 0.28, "height": 0.5}`。`shape` 可选 `circle/rectangle/line/mirror/star/heart`；尺寸为原生归一化包围框，不是像素，默认 0.28 × 0.5 与 16:9 样本相符。支持 `x/y`、`rotation`、`feather`（0–1）、`invert`（布尔），矩形另支持 `round_corner`（0–1）。线性蒙版为半平面，拒绝无效果的 `width/height` 参数。蒙版关键帧未接入。
 
-蒙版资源要求当前 runtime 为已采集的 11.4.2。构建会验证资源目录、拒绝符号链接和字节变化，并完整复制至草稿的 `Resources/headless-native/`。但原生保存会按资源 ID 回指剪映自己的缓存；回读仅接受原先固定目录且逐文件 hash 一致的这种改写，并报告 `native_cache_dependency: true`。不要因此宣称移机可用、完全离线独立或可公开分发；缓存缺失时停止，不自动下载、去掉授权身份或改造收费资源。
+蒙版资源的采集来源仍为 11.4.2，已审查的运行版本为 11.5.0 / 11.4.2；不修改来源身份或资源哈希。构建会验证资源目录、拒绝符号链接和字节变化，并完整复制至草稿的 `Resources/headless-native/`。但原生保存会按资源 ID 回指剪映自己的缓存；回读仅接受原先固定目录且逐文件 hash 一致的这种改写，并报告 `native_cache_dependency: true`。不要因此宣称移机可用、完全离线独立或可公开分发；缓存缺失时停止，不自动下载、去掉授权身份或改造收费资源。
 
 主视频片段可加入 `"transition_out": {"name": "dissolve", "duration_us": 400000, "edge_policy": "require-handles"}`，表示接到下一段的叠化。当前仅主视频相邻片段可用，末段不能加；时长需对应偶数帧且不长于两边任一段。默认要求两侧各有半个转场长度的源余量，变速时按速度换算，静态图像可自然保持。源余量不足会拒绝；只有明确接受端点重复帧时，才指定 `repeat-edge`，具体受影响边会记录在 `transition_audit`，时间线总时长不被缩短。资源限制与蒙版相同；原生渲染画面、编辑器播放和冷重开验收已通过。叠化不等于音频淡出淡入：同相测试原声在重叠区间增加约 6.03 dB，原生 UI 导出同一样本约 6.02 dB，二者仅差约 0.01 dB。这是该测试样本的原生叠加行为；仍须检查真实音频，不静默修正音量，详见 [export-macos.md](export-macos.md)。
 

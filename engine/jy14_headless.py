@@ -26,6 +26,7 @@ import native_motion as motion
 import native_resources as resources
 import native_effects as effects
 import native_visual_effects as visual_effects
+from runtime_profiles import validate_timeline_schema
 
 HERE = Path(__file__).resolve().parent
 BLUEPRINT_SHA = '91f7eddad5bff9af23eb88b53713c180e3e3d4054edd469140cfa9aa56bc1dc9'
@@ -459,8 +460,9 @@ def native_media_path(value, target):
     return path.resolve()
 
 
-def verify_structure(timeline, metadata, plan, assets, target, allow_native_resource_cache=False):
-    require(timeline['new_version'] == '185.0.0' and timeline['version'] == 360000, 'Unexpected native timeline version')
+def verify_structure(timeline, metadata, plan, assets, target, allow_native_resource_cache=False,
+                     runtime_profile=None):
+    validate_timeline_schema(timeline, runtime_profile)
     require(all(timeline['canvas_config'][k] == plan['canvas'][k] for k in ('width', 'height')), 'Canvas changed')
     require(timeline.get('fps', 30) == plan['canvas']['fps'], 'Timeline frame rate changed')
     require(metadata['draft_fold_path'] == str(target) and metadata['draft_name'] == target.name, 'Draft identity mismatch')
@@ -703,7 +705,8 @@ def verify_live(out):
     metadata = h._decrypt_metadata_in_memory(target / 'draft_meta_info.json')
     require(timeline['id'] == record['timeline_id'] and metadata['draft_id'] == record['draft_id'], 'Draft identity changed')
     native_resource_bindings = verify_structure(timeline, metadata, plan, record['assets'], target,
-                                               allow_native_resource_cache=True)
+                                               allow_native_resource_cache=True,
+                                               runtime_profile=nd.doctor()['runtime_profile'])
     project = read_json(target / 'Timelines/project.json')
     require(project['main_timeline_id'] == timeline['id'], 'Project/timeline reference changed')
     mirrors = [target / 'draft_info.json', target / 'template-2.tmp',
@@ -718,6 +721,7 @@ def verify_live(out):
     entries = [e for e in root['all_draft_store'] if e.get('draft_id') == record['draft_id']]
     require(len(entries) == 1 and entries[0]['draft_fold_path'] == str(target), 'Home registration missing or ambiguous')
     return {'status': 'verified', 'draft': str(target), 'name': target.name, 'duration_us': timeline.get('duration', 0),
+            'native_timeline_schema': timeline['new_version'],
             'tracks': [{'type': t['type'], 'segments': len(t['segments'])} for t in timeline.get('tracks', [])],
             'media_files': len(record['assets']), 'native_resources': len(record.get('native_resources', [])),
             'native_resource_bindings': native_resource_bindings,

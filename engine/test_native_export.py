@@ -129,10 +129,34 @@ class ExportGuards(unittest.TestCase):
         self.assertEqual(value['audio_codec'], 'aac')
         self.assertEqual(value['frame_delta'], 0)
 
-    def test_native_one_frame_rounding_is_reported(self):
-        self.probe['streams'][0]['nb_frames'] = '149'
-        value = e.validate_probe(self.probe, self.settings, 6_000_000, True)
-        self.assertEqual(value['frame_delta'], -1)
+    def test_aligned_timeline_missing_or_extra_frame_rejected(self):
+        for count in ('149', '151'):
+            with self.subTest(count=count):
+                self.probe['streams'][0]['nb_frames'] = count
+                with self.assertRaisesRegex(ValueError, 'frame count'):
+                    e.validate_probe(self.probe, self.settings, 6_000_000, True)
+
+    def test_microsecond_precision_does_not_admit_a_missing_frame(self):
+        self.settings['fps'] = 30
+        self.probe['streams'][0]['r_frame_rate'] = '30/1'
+        self.probe['format']['duration'] = '1.233333'
+        self.probe['streams'][0]['nb_frames'] = '37'
+        value = e.validate_probe(self.probe, self.settings, 1_233_333, True)
+        self.assertEqual(value['frame_count_policy'], 'exact-aligned')
+        self.probe['streams'][0]['nb_frames'] = '36'
+        with self.assertRaisesRegex(ValueError, 'frame count'):
+            e.validate_probe(self.probe, self.settings, 1_233_333, True)
+
+    def test_fractional_timeline_allows_only_adjacent_frame_counts(self):
+        for count in (150, 151):
+            self.probe['streams'][0]['nb_frames'] = str(count)
+            value = e.validate_probe(self.probe, self.settings, 6_020_000, True)
+            self.assertEqual(value['accepted_frame_range'], [150, 151])
+            self.assertEqual(value['frame_count_policy'], 'adjacent-fractional')
+        for count in (149, 152):
+            self.probe['streams'][0]['nb_frames'] = str(count)
+            with self.assertRaisesRegex(ValueError, 'frame count'):
+                e.validate_probe(self.probe, self.settings, 6_020_000, True)
 
     def test_unknown_mask_identity_is_rejected(self):
         for node in ({'id': 'circle'}, {'resource_type': 'text'},

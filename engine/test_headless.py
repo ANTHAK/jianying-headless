@@ -76,8 +76,18 @@ class HeadlessTests(unittest.TestCase):
         ids += [t['id'] for t in timeline['tracks']]
         ids += [s['id'] for t in timeline['tracks'] for s in t['segments']]
         self.assertEqual(len(ids), len(set(ids)))
-        video = timeline['materials']['videos']
-        self.assertEqual(len({m['local_material_id'] for m in video[:3]}), 1)
+        video = {m['id']: m for m in timeline['materials']['videos']}
+        # Match the fixture's actual sources, including a main track that mixes
+        # two files. Equal sources share a library identity, not a segment ID.
+        seen = {}
+        for planned, actual in zip(self.plan['tracks'], timeline['tracks']):
+            if planned['type'] != 'video':
+                continue
+            for before, after in zip(planned['segments'], actual['segments']):
+                local_id = video[after['material_id']]['local_material_id']
+                self.assertEqual(local_id, assets[before['source']]['local_id'])
+                self.assertEqual(seen.setdefault(before['source'], local_id), local_id)
+        self.assertEqual(len(set(seen.values())), len(seen))
         self.assertEqual(len(records), 6)
 
     def test_actual_encrypted_build_matches_plan(self):

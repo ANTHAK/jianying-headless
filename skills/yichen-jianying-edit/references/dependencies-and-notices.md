@@ -1,7 +1,7 @@
 # 运行依赖与来源
 
-- 核心项目：<https://github.com/mcncarl/jianying-headless>。当前为私有源码预览；
-  Skill 总目录或安装器不能代替私有仓库访问授权。
+- 核心项目：<https://github.com/mcncarl/jianying-headless>。公开源码预览；
+  Skill 总目录或安装器不会自动提供核心运行环境。
 - 剪映专业版是用户单独安装的闭源运行依赖。官方库、字体、效果包、缓存媒体和
   账号权益不随本 Skill 分发。内部接口调用不代表官方 SDK 或集成许可。
 - 当前核心桥接头文件参考了 MIT 许可的

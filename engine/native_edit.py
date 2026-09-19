@@ -16,6 +16,7 @@ import time
 
 import jy14_headless as j
 import native_compound as compound
+from runtime_profiles import validate_timeline_schema, saved_schema_upgrade
 
 SCHEMA = 'jy14-edit-plan/v1'
 BUILD_SCHEMA = 'jy14-edit-build/v1'
@@ -44,8 +45,7 @@ def segments(timeline):
 
 
 def basic_validation(timeline):
-    j.require(timeline.get('new_version') == '185.0.0' and timeline.get('version') == 360000,
-              'Only the verified 11.4 native timeline schema is accepted')
+    validate_timeline_schema(timeline)
     index = material_index(timeline)
     identifiers = set(index)
     end = 0
@@ -75,7 +75,7 @@ def mirrors(folder, timeline_id):
 
 
 def load_source(value):
-    j.nd.doctor()
+    runtime = j.nd.doctor()
     helper = j.nd.helper()
     helper._ensure_editor_closed(True)
     source = source_directory(value)
@@ -84,12 +84,14 @@ def load_source(value):
     metadata = helper._decrypt_metadata_in_memory(source / 'draft_meta_info.json')
     project = j.read_json(source / 'Timelines/project.json')
     compound.validate(timeline, basic_validation)
+    for _, node in compound.graph(timeline):
+        validate_timeline_schema(node, runtime['runtime_profile'])
     j.require(metadata['draft_fold_path'] == str(source), 'Source metadata path mismatch')
     j.require(project['main_timeline_id'] == timeline['id'], 'Source main timeline mismatch')
     j.require(len(project['timelines']) == 1 and project['timelines'][0]['id'] == timeline['id'],
               'Multi-timeline copies need a dedicated compatibility profile')
     if timeline.get('materials', {}).get('drafts'):
-        j.require(j.nd.doctor()['runtime_profile'] == compound.PROFILE, 'Compound copies require the captured 11.4.2 profile')
+        j.require(runtime['runtime_profile'] in compound.SUPPORTED_PROFILES, 'Compound copies require a reviewed runtime profile')
         compound.check_sidecars(timeline, source, source, preserved)
     # Never duplicate a cloud identity or alter rights information to make a copy.
     j.require(not metadata.get('cloud_draft_sync') and not metadata.get('draft_is_cloud_temp_draft')
@@ -337,7 +339,7 @@ def apply_operations(timeline, metadata, operations, target):
         old_duration = selected.get('duration', 0)
         if local.get('op') == 'create_compound':
             j.require(set(local) == {'op', 'name'}, 'Invalid compound creation fields')
-            j.require(j.nd.doctor()['runtime_profile'] == compound.PROFILE, 'Compound creation requires the captured 11.4.2 profile')
+            j.require(j.nd.doctor()['runtime_profile'] in compound.SUPPORTED_PROFILES, 'Compound creation requires a reviewed runtime profile')
             event = compound.wrap_all(selected, local['name'], target)
             events, created = [event], []
         else:
@@ -585,6 +587,34 @@ def verify_live(out):
     expected = j.read_json(out / 'expected-timeline.json')
     compound.validate(actual, basic_validation)
     compared, companion_identity_changes = compound.normalize_companion_ids(expected, actual)
+    runtime = j.nd.doctor()['runtime_profile']
+    schema_upgrades = []
+    compared_nodes = {node['id']: node for _, node in compound.graph(compared)}
+    for _, before in compound.graph(expected):
+        after = compared_nodes[before['id']]
+        change = saved_schema_upgrade(before, after, runtime)
+        if change:
+            schema_upgrades.append(change)
+            after['new_version'] = before['new_version']
+            old_platform = before.get('last_modified_platform', {})
+            if 'app_version' in old_platform:
+                j.require(old_platform['app_version'] in j.nd.PROFILES,
+                          'Unknown previous native save application')
+                change['last_modified_app_before'] = old_platform['app_version']
+                change['last_modified_app_after'] = after['last_modified_platform']['app_version']
+                after['last_modified_platform']['app_version'] = old_platform['app_version']
+            # Native save stamps current-machine provenance. These identifiers
+            # are not editing content; keep source platform and every other
+            # nonempty field strict, and report names without leaking values.
+            changed_device_fields = []
+            for key in ('device_id', 'hard_disk_id', 'mac_address'):
+                if key in old_platform and old_platform[key] != after['last_modified_platform'].get(key):
+                    value = after['last_modified_platform'].get(key)
+                    j.require(isinstance(value, str) and 0 < len(value) <= 256,
+                              'Invalid native save provenance field: ' + key)
+                    after['last_modified_platform'][key] = old_platform[key]
+                    changed_device_fields.append(key)
+            change['restamped_device_field_names'] = changed_device_fields
     quantized = []
     preserved(compound.normalize_paths(expected, target), compound.normalize_paths(compared, target),
               frame_tolerance=math.ceil(1_000_000 / expected.get('fps', 30)), quantized=quantized)
@@ -605,6 +635,7 @@ def verify_live(out):
             'preserved_fields_verified': True, 'four_mirrors_equal': True, 'video_exported': False,
             'nested_timelines': len(checked_compounds), 'compound_sidecars_verified': checked_compounds,
             'native_empty_companion_identity_changes': companion_identity_changes,
+            'native_schema_upgrades': schema_upgrades,
             'native_frame_quantization': quantized,
             'native_ui_acceptance': 'requires separate open/play/save/cold-reopen evidence'}
 
