@@ -73,19 +73,8 @@ def captured_video_effect(node):
 
 
 def captured_filter_or_text_effect(node):
-    """Exact local captures, with use restrictions preserved, not granted."""
-    keys = {'filter': 'filter/hd-monochrome', 'text_effect': 'text-effect/orange-outline'}
-    kind = node.get('type')
-    j.require(isinstance(kind, str) and kind in keys, 'Unverified native filter/text effect type')
-    entry = resources.definition(keys[kind])
-    for field in ('type', 'effect_id', 'resource_id', 'third_resource_id', 'sub_type',
-                  'source_platform', 'category_id'):
-        j.require(node.get(field) == entry['material'][field],
-                  'Unverified native filter/text effect identity: ' + field)
-    j.require(isinstance(node.get('path'), str) and node['path'], 'Missing captured filter/text effect path')
-    j.number(node.get('value'), 'Native filter/text effect strength', 0, 1)
-    j.require(kind != 'text_effect' or node['value'] == 1, 'Unverified text effect strength')
-    return keys[kind], entry
+    """Retired resources must fail, including in older frozen snapshots."""
+    raise ValueError('Native filter/text effect support has been removed; do not silently omit effects')
 
 
 def check_filter_and_text_bindings(timeline):
@@ -201,7 +190,7 @@ def local_supported_features(timeline):
                          'message': 'Technical rendering verified on the same-machine local sample after successful native UI export. '
                                     'This does not acquire or prove ongoing account entitlement, commercial rights, or redistribution rights. '
                                     'Use only within existing native authorization; account data is not read.'})
-    return {'content_scope': 'local single-timeline video, text, audio, linear keyframes, captured dissolve, six static geometric masks and three captured visual resources',
+    return {'content_scope': 'local single-timeline video, text, audio, linear keyframes, captured dissolve, six static geometric masks and captured light-shake',
             'mask_export': 'six captured shapes verified on the synthetic sample; inspect each actual output',
             'visual_acceptance': 'requires viewing the exported output',
             'audio_acceptance': 'requires checking the exported audio; stream presence is not audio quality acceptance',
