@@ -51,3 +51,7 @@ draft_meta_info.json
 root_meta_info.json
 draft_content.json
 key_value.json
+branch_structure.json
+temp_auto_push.bat
+temp_interactive_push.bat
+.gitignore
